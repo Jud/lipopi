@@ -49,15 +49,20 @@ def lipopi_user_shutdown(channel):
     global lipopi
 
     cmd = "sudo wall 'System shutting down in %d seconds'" % lipopi['shutdown_wait']
-    os.system(cmd)
 
+    # Make sure multiple clicks within 5 seconds don't trigger
+    lipopi['press'] = lipopi['press'] + 1
+    tmp_press = lipopi['press']
+    
     time.sleep(lipopi['shutdown_wait'])
 
-    msg = time.strftime("User Request - Shutting down at %a, %d %b %Y %H:%M:%S +0000\n", time.gmtime())
-    lipopi['logfile_pointer'].write(msg)
-    lipopi['logfile_pointer'].close()
-    GPIO.cleanup()
-    os.system("sudo shutdown now")
+    if lipopi['press'] == tmp_press and GPIO.input(lipopi['shutdown_pin']):
+        os.system(cmd)
+        msg = time.strftime("User Request - Shutting down at %a, %d %b %Y %H:%M:%S +0000\n", time.gmtime())
+        lipopi['logfile_pointer'].write(msg)
+        lipopi['logfile_pointer'].close()
+        GPIO.cleanup()
+        os.system("sudo shutdown now")
 
 
 # Respond to a low battery signal from the PowerBoost and shutdown
@@ -91,16 +96,18 @@ def lipopi_cleanup():
 # Setup LiPoPi global variable array
 
 lipopi = {}
+# Var for couunting presses
+lipopi['press'] = 0
 
 # Specify which GPIO pins to use
 lipopi['low_battery_pin'] = 15
 
-lipopi['shutdown_pin']    = 18
+lipopi['shutdown_pin']    = 23
 
 lipopi['logfile'] = '/home/pi/lipopi.log'  # FULL path to the log file
 # or do this relative to the location of this script?
 
-lipopi['shutdown_wait'] = 2  # seconds - how long to wait before actual shutdown - can be 0 if you want
+lipopi['shutdown_wait'] = 5  # seconds - how long to wait before actual shutdown - can be 0 if you want
 
 # setup the GPIO pins and event triggers
 
@@ -115,8 +122,3 @@ while True:
 # clean up if the script exits without machine shutdown
 
 lipopi_cleanup()
-
-
-
-
-
